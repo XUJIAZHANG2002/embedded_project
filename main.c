@@ -53,16 +53,20 @@
 #include "sleep.h"
 #include "xil_cache.h"
 #include "xparameters.h"
-
+#include "PmodTMP3.h"
+#include "sleep.h"
+#include "xil_cache.h"
+#include "xil_printf.h"
+#include "xparameters.h"
 void DemoInitialize();
-void DemoRun();
+int DemoRun();
 void DemoCleanup();
 void DisableCaches();
 void EnableCaches();
 void DemoSleep(u32 millis);
 
 PmodKYPD myDevice;
-
+PmodTMP3 myDevice2;
 // keytable is determined as follows (indices shown in Keypad position below)
 // 12 13 14 15
 // 8  9  10 11
@@ -143,9 +147,17 @@ void DemoInitialize() {
    EnableCaches();
    KYPD_begin(&myDevice, XPAR_PMODKYPD_0_AXI_LITE_GPIO_BASEADDR);
    KYPD_loadKeyTable(&myDevice, (u8*) DEFAULT_KEYTABLE);
+
+
+   xil_printf("\x1B[H");  // Move terminal cursor to top left
+   xil_printf("\x1B[1K"); // Clear terminal
+   xil_printf("Connected to PmodTMP3 Demo over UART\n\r");
+
+   TMP3_begin(&myDevice2, XPAR_PMODTMP3_0_AXI_LITE_IIC_BASEADDR, TMP3_ADDR);
+   xil_printf("Connected to PmodTMP3 over IIC on JB\n\r\n\r");
 }
 
-void DemoRun() {
+int DemoRun() {
    u16 keystate;
    XStatus status, last_status = KYPD_NO_KEY;
    u8 key, last_key = 'x';
@@ -164,11 +176,58 @@ void DemoRun() {
       // Print key detect if a new key is pressed or if status has changed
       if (status == KYPD_SINGLE_KEY
             && (status != last_status || key != last_key)) {
-    	  if ((char)key =='A'){
+    	  xil_printf("Key Pressed: %c\r\n", (char) key);
+    	  if (key =='A'){
     		  xil_printf("Key A is pressed. quitting...");
-    		  return;
+    		  return 1;
     	  }
-         xil_printf("Key Pressed: %c\r\n", (char) key);
+
+    	  if (key == 'B'){
+    		  int count = 0;
+    		  double temp  = 0.0;
+    		    double temp2 = 0.0;
+    		    double temp3 = 0.0;
+
+    		    while (1) {
+    		       temp  = TMP3_getTemp(&myDevice2);
+    		       temp2 = TMP3_CtoF(temp);
+    		       temp3 = TMP3_FtoC(temp2);
+
+    		       int temp2_round = 0;
+    		       int temp2_int   = 0;
+    		       int temp2_frac  = 0;
+    		       // Round to nearest hundredth, multiply by 100
+    		       if (temp2 < 0) {
+    		          temp2_round = (int) (temp2 * 1000 - 5) / 10;
+    		          temp2_frac  = -temp2_round % 100;
+    		       } else {
+    		          temp2_round = (int) (temp2 * 1000 + 5) / 10;
+    		          temp2_frac  = temp2_round % 100;
+    		       }
+    		       temp2_int = temp2_round / 100;
+
+    		       int temp3_round = 0;
+    		       int temp3_int   = 0;
+    		       int temp3_frac  = 0;
+    		       if (temp3 < 0) {
+    		          temp3_round = (int) (temp3 * 1000 - 5) / 10;
+    		          temp3_frac  = -temp3_round % 100;
+    		       } else {
+    		          temp3_round = (int) (temp3 * 1000 + 5) / 10;
+    		          temp3_frac  = temp3_round % 100;
+    		       }
+    		       temp3_int = temp3_round / 100;
+
+    		       xil_printf("Temperature: %d.%d in Fahrenheit\n", temp2_int, temp2_frac);
+    		       xil_printf("Temperature: %d.%d in Celsius\n", temp3_int, temp3_frac);
+    		       print("\n\r");
+    		       sleep(1); // Delay
+    		       count ++;
+    		       if (count == 10){
+    		    	   break;
+    		       }
+    		    }
+    	  }
          last_key = key;
       } else if (status == KYPD_MULTI_KEY && status != last_status)
          xil_printf("Error: Multiple keys pressed\r\n");
@@ -177,6 +236,7 @@ void DemoRun() {
 
       usleep(1000);
    }
+   return 0;
 }
 
 void DemoCleanup() {
@@ -206,8 +266,10 @@ void DisableCaches() {
 }
 int main()
 {
+	int quit = 0;
 	DemoInitialize();
-	   DemoRun();
+	while (!quit){
+	   quit = DemoRun();
 //	   DemoCleanup();
 #if LWIP_IPV6==0
 	ip_addr_t ipaddr, netmask, gw;
@@ -328,7 +390,7 @@ int main()
 		xemacif_input(echo_netif);
 		transfer_data();
 	}
-
+	}
 	/* never reached */
 	cleanup_platform();
 
