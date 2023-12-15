@@ -1,0 +1,1 @@
+2023-12-15T11:00:00Z {'cloudCover': 100, 'temperature': 55.59}

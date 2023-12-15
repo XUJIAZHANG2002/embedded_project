@@ -1,3 +1,7 @@
+# your_script.py
+
+
+
 import requests
 import argparse
 from datetime import datetime, timedelta
@@ -34,9 +38,15 @@ def main():
     args = parser.parse_args()
 
     weather_data = get_weather(args.city, args.day)
-    print(args.city, "Weather in ",args.day,"days")
+    #print(args.city, "Weather in ",args.day,"days")
+    content = ""
     for interval in weather_data:
-        print(interval)
+        content += str(interval['StartTime'])+" "+ str(interval['Values'])+"\n"
+        break
+
+    with open("output.txt", "w") as file:
+    	file.write(content)
 
 if __name__ == "__main__":
     main()
+
