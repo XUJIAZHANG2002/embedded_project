@@ -1,51 +1,60 @@
-# your_script.py
-
-
-
+import socket
 import requests
-import argparse
-from datetime import datetime, timedelta
 
-def get_weather(city, day):
-    url = "https://api.tomorrow.io/v4/timelines"
-    end_date = datetime.utcnow() + timedelta(days=day)
-    start_date = end_date - timedelta(days=1)
-    
-    querystring = {
-        "location": city,
-        "fields": ["temperature", "cloudCover"],
-        "units": "imperial",
-        "timesteps": "1d",
-        "startTime": start_date.isoformat() + "Z",
-        "endTime": end_date.isoformat() + "Z",
-        "apikey": "rbv146AnfUsuHquseBxaCZkvdvGWSall"
-    }
+url = "https://api.tomorrow.io/v4/timelines"
 
-    response = requests.request("GET", url, params=querystring)
-    data = response.json().get("data", {}).get("timelines", [])
-    
-    if data:
-        weather_data = data[0].get("intervals", [])
-        result = [{"StartTime": interval["startTime"], "Values": interval["values"]} for interval in weather_data]
-        return result
+querystring1 = {
+"location":"New York",
+"fields":["temperature", "cloudCover"],
+"units":"imperial",
+"timesteps":"1d",
+"apikey":"rbv146AnfUsuHquseBxaCZkvdvGWSall"}
 
-    return []
+querystring2 = {
+"location":"DuBai",
+"fields":["temperature", "cloudCover"],
+"units":"imperial",
+"timesteps":"1d",
+"apikey":"rbv146AnfUsuHquseBxaCZkvdvGWSall"}
 
-def main():
-    parser = argparse.ArgumentParser(description="Get weather information for a city and day")
-    parser.add_argument("--city", type=str, help="City name", required=True)
-    parser.add_argument("--day", type=int, help="Number of days", required=True)
-    args = parser.parse_args()
+querystring3 = {
+"location":"Shang Hai",
+"fields":["temperature", "cloudCover"],
+"units":"imperial",
+"timesteps":"1d",
+"apikey":"rbv146AnfUsuHquseBxaCZkvdvGWSall"}
 
-    weather_data = get_weather(args.city, args.day)
-    #print(args.city, "Weather in ",args.day,"days")
-    content = ""
-    for interval in weather_data:
-        content += str(interval['StartTime'])+" "+ str(interval['Values'])+"\n"
-        break
+queries = [querystring1,querystring2,querystring3]
+data_list = []
+for q in queries:
+	
+	response = requests.request("GET", url, params=q)
+	data_list.append(response.text)
+#print(data)
 
-    with open("output.txt", "w") as file:
-    	file.write(content)
 
-if __name__ == "__main__":
-    main()
+
+message = data_list[0]+data_list[1]+data_list[2]
+
+print(type(message))
+HOST = "192.168.1.10"  # The server's hostname or IP address
+PORT = 7  # The port used by the server
+import json
+
+
+
+# Convert each JSON string to a dictionary and then to a string
+result = "".join(
+    f"StartTime:{item['startTime']} CloudCover:{item['values']['cloudCover']} Temperature:{item['values']['temperature']}"
+    for data in data_list
+    for item in json.loads(data)["data"]["timelines"][0]["intervals"]
+)
+
+
+
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, PORT))
+    s.sendall(bytes(result,'utf-8'))
+    data = s.recv(1024)
+
