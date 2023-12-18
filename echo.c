@@ -34,6 +34,9 @@
 #if defined (__arm__) || defined (__aarch64__)
 #include "xil_printf.h"
 #endif
+int* cities;
+int* days;
+int num;
 
 int transfer_data() {
 	return 0;
@@ -49,6 +52,25 @@ void print_app_header()
 	xil_printf("TCP packets sent to port 6001 will be echoed back\n\r");
 }
 
+
+char* get_ith_substring(const char* input_string, int i) {
+    char* temp = strdup(input_string);  // Make a copy to avoid modifying the original string
+
+    // Use strtok to split the string by 'S'
+    char* token = strtok(temp, "S");
+
+    // Loop through to find the ith substring
+    while (token != NULL && i > 0) {
+        token = strtok(NULL, "S");
+        i--;
+    }
+
+    // Copy the ith substring to a new buffer
+    char* result = (token != NULL) ? strdup(token) : NULL;
+
+
+    return result;
+}
 err_t recv_callback(void *arg, struct tcp_pcb *tpcb,
                                struct pbuf *p, err_t err)
 {
@@ -64,7 +86,23 @@ err_t recv_callback(void *arg, struct tcp_pcb *tpcb,
 
 	/* echo back the payload */
 	/* in this case, we assume that the payload is < TCP_SND_BUF */
-	xil_printf("The content is : %s\n",p->payload);
+	for(int i = 0; i < num; i++){
+		const char *cityName;
+		if (cities[i]== 1) {
+				cityName = "New York";
+			} else if (cities[i]== 2) {
+				cityName = "Dubai";
+			} else if (cities[i]== 3) {
+				cityName = "Shanghai";
+			} else {
+				// Handle other cases or set a default value
+				cityName = "Unknown City";
+			}
+
+			// Print the variable
+			xil_printf("City: %s Weather in %d days.\n", cityName,days[i]);
+		xil_printf("S%s\n",get_ith_substring(p->payload, (cities[i]-1)*6+days[i]));
+	}
 	if (tcp_sndbuf(tpcb) > p->len) {
 		err = tcp_write(tpcb, p->payload, p->len, 1);
 	} else
@@ -94,12 +132,14 @@ err_t accept_callback(void *arg, struct tcp_pcb *newpcb, err_t err)
 }
 
 
-int start_application()
+int start_application(int* cityArr, int* dayArr, int len)
 {
 	struct tcp_pcb *pcb;
 	err_t err;
 	unsigned port = 7;
-
+	cities = cityArr;
+	days = dayArr;
+	num = len;
 	/* create new TCP PCB structure */
 	pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
 	if (!pcb) {
